@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
 
 
 int creer_serveur(int port ){
@@ -41,13 +43,16 @@ int afficherMessage(int socket_client){
 		perror("write");
 		return -1;
 	}
+	close(fd);
 	return 0;
 }
 
+#define BUFF_SIZE 128
 void traiterClient(int socket_client){
-	char buffer[128];
+	char p[BUFF_SIZE];
 	afficherMessage(socket_client);
-	while(read(socket_client,buffer,128)!=EOF){
-		afficherMessage(socket_client);
+	int i=0;
+	while((i=read(socket_client,p,BUFF_SIZE))!=EOF){
+		write(socket_client, p, i);
 	}
 }
