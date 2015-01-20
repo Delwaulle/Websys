@@ -1,1 +1,5 @@
 *.o
+*.dep
+*~
+*.swp
+webserver/websys
