@@ -1,0 +1,10 @@
+1) Le deuxième client est attente car le serveur ne peux en traiter qu'un seul à la fois (multi processus non géré pour l'instant).
+
+2) Il ne se passe rien avec l'option -z de nc.
+
+3)" Trying ::1...
+telnet: connect to address ::1: Connection refused
+telnet: Unable to connect to remote host: Connection refused "
+
+4) Il ne se passe rien.
+

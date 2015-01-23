@@ -37,7 +37,7 @@ int creer_serveur(int port ){
 }
 
 int afficherMessage(int socket_client){
-	char * message_bienvenue="Bonjour";
+	char * message_bienvenue=" __          ________ ____   _______     _______ \n\\ \\        / /  ____|  _ \\ / ____\\ \\   / / ____|\n\\ \\  /\\  / /| |__  | |_) | (___  \\ \\_/ / (___  \n\\ \\/  \\/ / |  __| |  _ < \\___ \\  \\   / \\___ \\ \n\\  /\\  /  | |____| |_) |____) |  | |  ____) |\n       \\/  \\/   |______|____/|_____/   |_| |_____/ \n                                                   \n                                                    \n Welcome to websys, our dedicated webserver for your websites. \n Created by Delwaulle Loic & Froment Benoit during a student project.\n";
 	int fd=write(socket_client, message_bienvenue , strlen(message_bienvenue));
 	if(fd==-1){
 		perror("write");
@@ -50,6 +50,7 @@ int afficherMessage(int socket_client){
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
+	sleep(1000);
 	afficherMessage(socket_client);
 	int i=0;
 	while((i=read(socket_client,p,BUFF_SIZE))!=EOF){
