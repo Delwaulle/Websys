@@ -7,11 +7,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
+
+
+void initialiser_signaux(void){
+	if(signal(SIGPIPE ,SIG_IGN) == SIG_ERR){
+		perror("signal");
+	}
+}
 
 
 int creer_serveur(int port ){
 	int socket_serveur ;
+	initialiser_signaux();
 	socket_serveur = socket(AF_INET , SOCK_STREAM , 0);
 	if ( socket_serveur == -1){
 		perror ("socket_serveur");
