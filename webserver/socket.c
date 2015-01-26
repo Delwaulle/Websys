@@ -18,6 +18,10 @@ int creer_serveur(int port ){
 		return -1;
 	}
 
+	int optval = 1;
+	if(setsockopt(socket_serveur , SOL_SOCKET , SO_REUSEADDR , &optval , sizeof(int)) == -1)
+		perror("Can not set SO_REUSEADDR option ");
+
 	struct sockaddr_in saddr ;
 	saddr.sin_family = AF_INET ; /* Socket ipv4 */
 	saddr.sin_port = htons(port); /* Port d ’ écoute */
@@ -50,7 +54,7 @@ int afficherMessage(int socket_client){
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
-	sleep(1000);
+	//sleep(1000);
 	afficherMessage(socket_client);
 	int i=0;
 	while((i=read(socket_client,p,BUFF_SIZE))!=EOF){

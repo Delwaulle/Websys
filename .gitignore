@@ -2,4 +2,5 @@
 *.dep
 *~
 *.swp
+scriptgit
 webserver/websys

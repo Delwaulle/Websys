@@ -1,4 +1,5 @@
-1) Le deuxième client est attente car le serveur ne peux en traiter qu'un seul à la fois (multi processus non géré pour l'instant).
+1)bind socket_serveur: Address already in use
+accept: Bad file descriptor
 
 2) Il ne se passe rien avec l'option -z de nc.
 
