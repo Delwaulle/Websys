@@ -1,5 +1,7 @@
 #include "socket.h"
 #include "signal.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 
 int creer_serveur(int port ){
@@ -53,9 +55,14 @@ void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
 	afficherMessage(socket_client);
 	int i=0;
-	while((i=read(socket_client,p,BUFF_SIZE))> 0){
-		write(socket_client, p, i);
+	const char * mode="w+";
+	FILE * f=fdopen(socket_client, mode);
+	while(fgets(p,BUFF_SIZE,f)!=NULL){
+		fprintf(f,"<Websys> %s",p);
 	}
+	/*while((i=read(socket_client,p,BUFF_SIZE))> 0){
+		write(socket_client, p, i);
+	}*/
 }
 
 int attendre_socket(int socket_serveur){
