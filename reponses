@@ -1,7 +1,7 @@
 1)bind socket_serveur: Address already in use
 accept: Bad file descriptor
 
-2) Il ne se passe rien avec l'option -z de nc.
+2) Le serveur s'interromp avec l'option -z de nc.
 
 3)" Trying ::1...
 telnet: connect to address ::1: Connection refused
