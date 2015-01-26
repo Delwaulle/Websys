@@ -2,9 +2,8 @@
 
 void traitement_signal(int sig )
 {
-	pid_t pid;
 	int status;
-	waitpid(pid, &status, WNOHANG );
+	while(waitpid(-1, &status,WNOHANG)==0);
 	//printf("Signal %d reçu \n" ,sig);
 }
 
