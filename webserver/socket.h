@@ -14,5 +14,6 @@ socket créée .*/
 int creer_serveur(int port );
 int afficherMessage(int socket_client);
 void traiterClient(int socket_client);
+int attendre_socket(int socket_serveur);
 #endif
 

@@ -1,22 +1,5 @@
 #include "socket.h"
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <sys/wait.h>
-#include <stdlib.h>
-
-
-void initialiser_signaux(void){
-	if(signal(SIGPIPE ,SIG_IGN) == SIG_ERR){
-		perror("signal");
-	}
-}
+#include "signal.h"
 
 
 int creer_serveur(int port ){
@@ -68,7 +51,6 @@ int afficherMessage(int socket_client){
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
-	//sleep(1000);
 	afficherMessage(socket_client);
 	int i=0;
 	while((i=read(socket_client,p,BUFF_SIZE))> 0){
@@ -76,7 +58,7 @@ void traiterClient(int socket_client){
 	}
 }
 
-int attendreSignal(int socket_serveur){
+int attendre_socket(int socket_serveur){
 	pid_t pid;
 	int status;
 	while(1){
@@ -93,8 +75,6 @@ int attendreSignal(int socket_serveur){
 			exit(0);
 		}
 		else{ 
-			//waitpid(pid, &status,WUNTRACED | WCONTINUED |WNOHANG );
-			//while (!WIFEXITED(status));
 			close(socket_client);
 		}		
 	}
