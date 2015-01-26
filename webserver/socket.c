@@ -2,7 +2,7 @@
 #include "signal.h"
 #include <stdarg.h>
 #include <stdio.h>
-
+#include <string.h>
 
 int creer_serveur(int port ){
 	int socket_serveur ;
@@ -50,15 +50,42 @@ int afficherMessage(int socket_client){
 	return 0;
 }
 
+int traitement_entete_http(char ligne []){
+	int nbMots=1;
+	int i;
+	char get[50];
+	char str[50];
+	sscanf(ligne,"%s %s", get, str);
+	if(strcmp(get,"GET")!=0)
+		return -1;
+	for(i=0;i<strlen(ligne);i++){
+		if(ligne[i]==' '){
+			nbMots++;
+		}
+	}
+	if(nbMots!=3)
+		return -1;
+	return 0;
+
+}
+
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
-	afficherMessage(socket_client);
 	int i=0;
 	const char * mode="w+";
 	FILE * f=fdopen(socket_client, mode);
 	while(fgets(p,BUFF_SIZE,f)!=NULL){
-		fprintf(f,"<Websys> %s",p);
+		if(i==0){
+			if(traitement_entete_http(p)!=0){
+				printf("BAD REQUEST");
+				exit(0);
+			}	
+			else
+				afficherMessage(socket_client);
+		}
+		printf("<Websys> %s",p);
+		i++;
 	}
 	/*while((i=read(socket_client,p,BUFF_SIZE))> 0){
 		write(socket_client, p, i);
