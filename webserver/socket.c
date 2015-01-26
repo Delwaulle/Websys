@@ -8,7 +8,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
-
+#include <sys/wait.h>
+#include <stdlib.h>
 
 
 void initialiser_signaux(void){
@@ -70,7 +71,31 @@ void traiterClient(int socket_client){
 	//sleep(1000);
 	afficherMessage(socket_client);
 	int i=0;
-	while((i=read(socket_client,p,BUFF_SIZE))!=EOF){
+	while((i=read(socket_client,p,BUFF_SIZE))> 0){
 		write(socket_client, p, i);
+	}
+}
+
+int attendreSignal(int socket_serveur){
+	pid_t pid;
+	int status;
+	while(1){
+		int socket_client ;
+		socket_client = accept(socket_serveur , NULL , NULL );
+		if (socket_client == -1){
+			perror("accept");
+			return -1;
+		}
+			
+		pid=fork();
+		if(pid==0){
+			traiterClient(socket_client);
+			exit(0);
+		}
+		else{ 
+			//waitpid(pid, &status,WUNTRACED | WCONTINUED |WNOHANG );
+			//while (!WIFEXITED(status));
+			close(socket_client);
+		}		
 	}
 }
