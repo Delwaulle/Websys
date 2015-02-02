@@ -5,10 +5,6 @@
 #include <string.h>
 
 
-void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
-	fprintf(client, "HTTP/1.1 %i %s\r\nContent-Length: %i\r\n%s\r\n",code,message_cours,strlen(message_long),message_long);
-}
-
 int creer_serveur(int port ){
 	int socket_serveur ;
 
@@ -44,38 +40,31 @@ int creer_serveur(int port ){
 	return socket_serveur;
 }
 
-int afficherMessage(int socket_client){
+char * afficherMessage(){
 	char * message_bienvenue=" __          ________ ____   _______     _______ \n\\ \\        / /  ____|  _ \\ / ____\\ \\   / / ____|\n\\ \\  /\\  / /| |__  | |_) | (___  \\ \\_/ / (___  \n\\ \\/  \\/ / |  __| |  _ < \\___ \\  \\   / \\___ \\ \n\\  /\\  /  | |____| |_) |____) |  | |  ____) |\n       \\/  \\/   |______|____/|_____/   |_| |_____/ \n                                                   \n                                                    \n Welcome to websys, our dedicated webserver for your websites. \n Created by Delwaulle Loic & Froment Benoit during a student project.\n";
-	int fd=write(socket_client, message_bienvenue , strlen(message_bienvenue));
-	if(fd==-1){
-		perror("write");
-		return -1;
-	}
-	close(fd);
-	return 0;
+	return message_bienvenue;
 }
 
 char *substr(char *src,int pos,int len) { 
 	char *dest=NULL;                        
-	if (len>0) {                  
-   		/* allocation et mise à zéro */          
-   		dest = calloc(len+1, 1);      
-   		/* vérification de la réussite de l'allocation*/  
+	if (len>0) {                           
+   		dest = calloc(len+1, 1);       
     		if(NULL != dest) {
        			strncat(dest,src+pos,len);            
     		}
   	}                                       
 	return dest;                            
 }
-
-int traitement_entete_http(char ligne []){
+int parse_http_request( char * ligne , http_request * request,FILE * client ){
 	int nbMots=1;
+	int bad_request;
 	int i;
 	char get[50];
 	char str[50];
 	sscanf(ligne,"%s %s", get, str);
-	if(strcmp(get,"GET")!=0)
-		return -1;
+	if(strcmp(get,"GET")!=0){
+		bad_request=0;
+	}
 	for(i=0;i<strlen(ligne);i++){
 		if(ligne[i]==' '){
 			nbMots++;
@@ -83,51 +72,77 @@ int traitement_entete_http(char ligne []){
 				char *http;
 				char *version;
 				http=substr(ligne,i+1,4);
-				if(strcmp(http,"HTTP")!=0)
-					return -1;
+				if(strcmp(http,"HTTP")!=0){
+					bad_request=0;
+				}
 				version=substr(ligne,i+6,strlen(ligne));
 				char c=version[0];
 				char c2=version[2];
 				int v1=(int)c-48;
 				int vv=(int)c2-48;
 				if(v1!=1 || (vv!=0 && vv!=1)) {
-					return -1;
+					bad_request=0;
 				}
 			}
 			else if (nbMots==2){
-				char * url=substr(ligne,i+1,2);
-				char c=url[0];
-				char c2=url[1];
-				if(!(c=='/' && c2 == ' '))
-					return -2;
+				char method[50];
+				char url[50];
+				char reste[50];
+				sscanf(ligne,"%s %s %s", method, url,reste);
+				request.url=url;
 			}
 		}
 	}
 	if(nbMots!=3)
-		return -1;
-
+		return 0;
 	
-	return 0;
+	if(bad_request==0){
+		send_response(client , 400 , "Bad Request" , "Bad request\r\n");
+		return 0;
+	}
+	else if(request.method == HTTP_UNSUPPORTED ){
+		send_response( client , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
+		return 0;
+	}
+	else if(strcmp(request.url, "/" ) == 0){
+		send_response( client , 200 , "OK" , afficherMessage() );
+		return 1;
+	}
+	else{
+		send_response(client, 404 , "Not Found" , "Not Found\r\n" );
+		return 0;	
+	}
+	return 1;
 }
+
+char *fgets_or_exit( char * buffer , int size , FILE * stream ){
+	if(fgets(buffer,size,stream)==NULL){
+		exit(0);
+	}
+}
+
+void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
+	send_status(client,code,message_cours);
+	fprintf(client, "Content-Length: %i\r\n%s\r\n",strlen(message_long),message_long);
+	//exit(0);
+}
+
+void send_status( FILE * client , int code , const char * reason_phrase ){
+	fprintf(client,"HTTP/1.1 %i %s\r\n",code,reason_phrase);
+}
+
 
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
 	int i=0;
 	const char * mode="w+";
+	http_request * req;
 	FILE * f=fdopen(socket_client, mode);
-	while(fgets(p,BUFF_SIZE,f)!=NULL){
+	while(fgets_or_exit(p,BUFF_SIZE,f)){
 		if(i==0){
-			int traitement=traitement_entete_http(p);
-			if(traitement==-1){
-				send_response(f,400,"Bad Request\r\nConnection: close","400 Bad request");
-				//fprintf(f, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: %i\r\n400 Bad request\r\n",17);
-				exit(0);
-			}
-			else if (traitement==-2){
-				send_response(f,404,"NOT FOUND\r\nConnection: close","404 INCORRECT URL");
-				exit(0);
-			}
+			parse_http_request(p,req,f);
+			
 		}
 		if(p[0]=='\n' || (strcmp(p,"\r\n")==0))
 			break;
@@ -135,12 +150,8 @@ void traiterClient(int socket_client){
 		printf("<websys> %s", p);
 		i++;
 	}
-
-	/*while((i=read(socket_client,p,BUFF_SIZE))> 0){
-		write(socket_client, p, i);
-	}*/
-	afficherMessage(socket_client);
-	fprintf(f,"HTTP/1.1 200 OK\r\nContent-Length: %i\r\n",10);
+	//afficherMessage(socket_client);
+	//send_status(f,200,"ok");
 }
 
 int attendre_socket(int socket_serveur){

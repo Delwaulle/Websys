@@ -12,8 +12,20 @@ doit pouvoir être utilisée directement par un appel à accept .
 La fonction retourne -1 en cas d ’ erreur ou le descripteur de la
 socket créée .*/
 int creer_serveur(int port );
-int afficherMessage(int socket_client);
+char * afficherMessage();
 void traiterClient(int socket_client);
 int attendre_socket(int socket_serveur);
+void send_status( FILE * client , int code , const char * reason_phrase );
+void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long );
+enum http_method {
+	HTTP_GET,
+	HTTP_UNSUPPORTED,
+};
+typedef struct{
+	enum http_method method;
+	int major_version ;
+	int minor_version ;
+	char * url ;
+} http_request ;
 #endif
 
