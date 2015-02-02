@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 
+
+void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
+	fprintf(client, "HTTP/1.1 %i %s\r\nContent-Length: %i\r\n%s\r\n",code,message_cours,strlen(message_long),message_long);
+}
+
 int creer_serveur(int port ){
 	int socket_serveur ;
 
@@ -78,11 +83,9 @@ int traitement_entete_http(char ligne []){
 				char *http;
 				char *version;
 				http=substr(ligne,i+1,4);
-				//printf("%s\n",http);
 				if(strcmp(http,"HTTP")!=0)
 					return -1;
 				version=substr(ligne,i+6,strlen(ligne));
-				//printf("%s\n",version);
 				char c=version[0];
 				char c2=version[2];
 				int v1=(int)c-48;
@@ -90,6 +93,13 @@ int traitement_entete_http(char ligne []){
 				if(v1!=1 || (vv!=0 && vv!=1)) {
 					return -1;
 				}
+			}
+			else if (nbMots==2){
+				char * url=substr(ligne,i+1,2);
+				char c=url[0];
+				char c2=url[1];
+				if(!(c=='/' && c2 == ' '))
+					return -2;
 			}
 		}
 	}
@@ -108,10 +118,16 @@ void traiterClient(int socket_client){
 	FILE * f=fdopen(socket_client, mode);
 	while(fgets(p,BUFF_SIZE,f)!=NULL){
 		if(i==0){
-			if(traitement_entete_http(p)!=0){
-				fprintf(f, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: %i\r\n400 Bad request\r\n",17);
+			int traitement=traitement_entete_http(p);
+			if(traitement==-1){
+				send_response(f,400,"Bad Request\r\nConnection: close","400 Bad request");
+				//fprintf(f, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: %i\r\n400 Bad request\r\n",17);
 				exit(0);
-			}	
+			}
+			else if (traitement==-2){
+				send_response(f,404,"NOT FOUND\r\nConnection: close","404 INCORRECT URL");
+				exit(0);
+			}
 		}
 		if(p[0]=='\n' || (strcmp(p,"\r\n")==0))
 			break;
