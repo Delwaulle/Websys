@@ -45,7 +45,7 @@ char * afficherMessage(){
 	return message_bienvenue;
 }
 
-char *substr(char *src,int pos,int len) { 
+char *substr(const char *src,int pos,int len) { 
 	char *dest=NULL;                        
 	if (len>0) {                           
    		dest = calloc(len+1, 1);       
@@ -55,33 +55,36 @@ char *substr(char *src,int pos,int len) {
   	}                                       
 	return dest;                            
 }
-int parse_http_request( char * ligne , http_request * request,FILE * client ){
+int parse_http_request( const char * ligne , http_request * request){
 	int nbMots=1;
-	int bad_request;
 	int i;
 	char get[50];
 	char str[50];
 	sscanf(ligne,"%s %s", get, str);
-	if(strcmp(get,"GET")!=0){
-		bad_request=0;
+	if(strcmp(get,"GET")==0){
+		request->method=HTTP_GET;
 	}
+	else {
+		request->method=HTTP_UNSUPPORTED;
+	}
+	
 	for(i=0;i<strlen(ligne);i++){
 		if(ligne[i]==' '){
 			nbMots++;
 			if(nbMots==3){
-				char *http;
-				char *version;
-				http=substr(ligne,i+1,4);
+				char *http=substr(ligne,i+1,4);
+				char *version=substr(ligne,i+6,strlen(ligne));
 				if(strcmp(http,"HTTP")!=0){
-					bad_request=0;
+					return 0;
 				}
-				version=substr(ligne,i+6,strlen(ligne));
 				char c=version[0];
 				char c2=version[2];
 				int v1=(int)c-48;
 				int vv=(int)c2-48;
+				request->major_version=v1;
+				request->minor_version=vv;
 				if(v1!=1 || (vv!=0 && vv!=1)) {
-					bad_request=0;
+					return 0;
 				}
 			}
 			else if (nbMots==2){
@@ -89,29 +92,12 @@ int parse_http_request( char * ligne , http_request * request,FILE * client ){
 				char url[50];
 				char reste[50];
 				sscanf(ligne,"%s %s %s", method, url,reste);
-				request.url=url;
+				request->url=url;
 			}
 		}
 	}
 	if(nbMots!=3)
 		return 0;
-	
-	if(bad_request==0){
-		send_response(client , 400 , "Bad Request" , "Bad request\r\n");
-		return 0;
-	}
-	else if(request.method == HTTP_UNSUPPORTED ){
-		send_response( client , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
-		return 0;
-	}
-	else if(strcmp(request.url, "/" ) == 0){
-		send_response( client , 200 , "OK" , afficherMessage() );
-		return 1;
-	}
-	else{
-		send_response(client, 404 , "Not Found" , "Not Found\r\n" );
-		return 0;	
-	}
 	return 1;
 }
 
@@ -123,7 +109,7 @@ char *fgets_or_exit( char * buffer , int size , FILE * stream ){
 
 void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
 	send_status(client,code,message_cours);
-	fprintf(client, "Content-Length: %i\r\n%s\r\n",strlen(message_long),message_long);
+	fprintf(client, "Content-Length: %i\r\n%s\r\n",(int)strlen(message_long),message_long);
 	//exit(0);
 }
 
@@ -132,17 +118,28 @@ void send_status( FILE * client , int code , const char * reason_phrase ){
 }
 
 
+void skip_headers(FILE *client){
+
+
+}
+
 #define BUFF_SIZE 128
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
 	int i=0;
 	const char * mode="w+";
-	http_request * req;
+	http_request *req;
 	FILE * f=fdopen(socket_client, mode);
 	while(fgets_or_exit(p,BUFF_SIZE,f)){
 		if(i==0){
-			parse_http_request(p,req,f);
-			
+			if(parse_http_request(p,req)==0)
+				send_response(f, 400 , "Bad Request" , "Bad request\r\n");
+			else if(req->method == HTTP_UNSUPPORTED )
+				send_response( f , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
+			else if(strcmp(req->url, "/" )== 0)
+				send_response( f , 200 , "OK" , afficherMessage() );
+			else
+				send_response(f, 404 , "Not Found" , "Not Found\r\n" );
 		}
 		if(p[0]=='\n' || (strcmp(p,"\r\n")==0))
 			break;
@@ -150,8 +147,6 @@ void traiterClient(int socket_client){
 		printf("<websys> %s", p);
 		i++;
 	}
-	//afficherMessage(socket_client);
-	//send_status(f,200,"ok");
 }
 
 int attendre_socket(int socket_serveur){
