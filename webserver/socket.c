@@ -67,7 +67,6 @@ int parse_http_request( const char * ligne , http_request * request){
 	else {
 		request->method=HTTP_UNSUPPORTED;
 	}
-	
 	for(i=0;i<strlen(ligne);i++){
 		if(ligne[i]==' '){
 			nbMots++;
@@ -109,12 +108,11 @@ char *fgets_or_exit( char * buffer , int size , FILE * stream ){
 
 void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
 	send_status(client,code,message_cours);
-	fprintf(client, "Content-Length: %i\r\n%s\r\n",(int)strlen(message_long),message_long);
-	//exit(0);
+	fprintf(client, "Content-Length: %i\r\n%s\r\n",strlen(message_long),message_long);
 }
 
 void send_status( FILE * client , int code , const char * reason_phrase ){
-	fprintf(client,"HTTP/1.1 %i %s\r\n",code,reason_phrase);
+	fprintf(client,"HTTP/1.1 %i\r\n%s\r\n",code,reason_phrase);
 }
 
 
@@ -123,26 +121,35 @@ void skip_headers(FILE *client){
 
 }
 
-#define BUFF_SIZE 128
+#define BUFF_SIZE 256
 void traiterClient(int socket_client){
 	char p[BUFF_SIZE];
 	int i=0;
 	const char * mode="w+";
-	http_request *req;
+	http_request req;
+	http_request *r=&req;
 	FILE * f=fdopen(socket_client, mode);
 	while(fgets_or_exit(p,BUFF_SIZE,f)){
 		if(i==0){
-			if(parse_http_request(p,req)==0)
+			if(parse_http_request(p,r)==0){
 				send_response(f, 400 , "Bad Request" , "Bad request\r\n");
-			else if(req->method == HTTP_UNSUPPORTED )
+				exit(0);			
+			}			
+			else if(req.method == HTTP_UNSUPPORTED ){
 				send_response( f , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
-			else if(strcmp(req->url, "/" )== 0)
+				exit(0);			
+			}
+			else if(strcmp(req.url, "/" )== 0){
 				send_response( f , 200 , "OK" , afficherMessage() );
-			else
+			}
+			else{
 				send_response(f, 404 , "Not Found" , "Not Found\r\n" );
+				exit(0);			
+			}
 		}
-		if(p[0]=='\n' || (strcmp(p,"\r\n")==0))
+		if(p[0]=='\n' || (strcmp(p,"\r\n")==0)){
 			break;
+		}
 		
 		printf("<websys> %s", p);
 		i++;
@@ -162,6 +169,7 @@ int attendre_socket(int socket_serveur){
 			
 		pid=fork();
 		if(pid==0){
+
 			traiterClient(socket_client);
 			exit(0);
 		}
