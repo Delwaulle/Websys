@@ -3,7 +3,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 int creer_serveur(int port ){
 	int socket_serveur ;
@@ -88,7 +90,7 @@ int parse_http_request( const char * ligne , http_request * request){
 			}
 			else if (nbMots==2){
 				char method[50];
-				char url[50];
+				char *url=malloc(50);
 				char reste[50];
 				sscanf(ligne,"%s %s %s", method, url,reste);
 				request->url=url;
@@ -98,6 +100,23 @@ int parse_http_request( const char * ligne , http_request * request){
 	if(nbMots!=3)
 		return 0;
 	return 1;
+}
+
+char * rewrite_url(char * url){
+	int i;
+	for(i=0;i<strlen(url);i++){
+		if(url[i]=='?')
+			break;
+	}
+	return substr(url,0,i);
+
+}
+
+int get_file_size(int fd){
+	struct stat fileStat;
+    	if(fstat(fd,&fileStat) < 0)    
+        	return -1;
+	return fileStat.st_size;
 }
 
 char *fgets_or_exit( char * buffer , int size , FILE * stream ){
@@ -127,10 +146,38 @@ void skip_headers(FILE *client){
 	}
 }
 
+
+int check_and_open(const char * url , char * document_root ){
+	
+	char *str=strcat(document_root,url);
+	struct stat fi;
+        stat(str, &fi);
+        if(S_ISREG(fi.st_mode)==0){
+		return -1;
+	}
+	int fichier = open(str,O_RDONLY,0666);
+	if(fichier==-1){
+		perror("open fichier");
+		return -1;
+	}
+
+	return fichier;
+
+}
 #define BUFF_SIZE 256
-void traiterClient(int socket_client){
+int copy(int in, int out){
+	char buffer[BUFF_SIZE];
+	int nbEcrit;
+	while((nbEcrit=read(in,buffer,sizeof(buffer)))>0){
+    		write(out,buffer,nbEcrit);
+	}
+}
+
+#define BUFF_SIZE 256
+void traiterClient(int socket_client, char * root){
 	char p[BUFF_SIZE];
 	int i=0;
+	int open;
 	const char * mode="w+";
 	http_request req;
 	http_request *r=&req;
@@ -146,23 +193,25 @@ void traiterClient(int socket_client){
 		send_response( f , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
 		exit(0);			
 	}
-	else if(strcmp(req.url, "/" )== 0){
-		send_response(f, 200 , "OK" , afficherMessage());
-	}
-	else{
+	else if((open=check_and_open(req.url, root ))== -1){
 		send_response(f, 404 , "Not Found" , "Not Found\r\n" );
-		exit(0);			
+		exit(0);
 	}
-	printf("<websys> %s", p);
+	else{	
+		send_status(f,200,"OK");
+		fprintf(f, "Content-Length: %i\r\n\r\n",get_file_size(open));
+		copy(open,fileno(f));
+		exit(0);
+	}
 
 }
 
-int attendre_socket(int socket_serveur){
+int attendre_socket(int socket_serveur, char * root){
 	pid_t pid;
 	int status;
 	while(1){
 		int socket_client ;
-		socket_client = accept(socket_serveur , NULL , NULL );
+		socket_client = accept(socket_serveur , NULL , NULL);
 		if (socket_client == -1){
 			perror("accept");
 			return -1;
@@ -171,7 +220,7 @@ int attendre_socket(int socket_serveur){
 		pid=fork();
 		if(pid==0){
 
-			traiterClient(socket_client);
+			traiterClient(socket_client,root);
 			exit(0);
 		}
 		else{ 
