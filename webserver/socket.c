@@ -102,11 +102,19 @@ int parse_http_request( const char * ligne , http_request * request){
 	return 1;
 }
 
-char * rewrite_url(char * url){
+char * rewrite_url(char * url,FILE * f){
 	int i;
+	if(strcmp(url,"/")==0)
+		return "/index.html";
+
 	for(i=0;i<strlen(url);i++){
 		if(url[i]=='?')
 			break;
+	}
+
+	if (strstr(url, "..") != NULL) {
+   		send_response(f, 403 , "Refused" , "Accès refusé\r\n" );
+		exit(0);
 	}
 	return substr(url,0,i);
 
@@ -185,15 +193,16 @@ void traiterClient(int socket_client, char * root){
 	fgets_or_exit(p,BUFF_SIZE,f);
 	i=parse_http_request(p,r);
 	skip_headers(f);
+	open=check_and_open(rewrite_url(req.url,f), root );
 	if(i==0){
 		send_response(f, 400 , "Bad Request" , "Bad request\r\n");
 		exit(0);			
 	}			
 	else if(req.method == HTTP_UNSUPPORTED ){
 		send_response( f , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
-		exit(0);			
+		exit(0);		
 	}
-	else if((open=check_and_open(req.url, root ))== -1){
+	else if(open== -1){
 		send_response(f, 404 , "Not Found" , "Not Found\r\n" );
 		exit(0);
 	}
