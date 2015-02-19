@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "tools.h"
 
 int creer_serveur(int port ){
 	int socket_serveur ;
@@ -119,6 +120,40 @@ char * rewrite_url(char * url,FILE * f){
 	return substr(url,0,i);
 
 }
+#define BUFF_SIZE 256
+int get_type_mime(){
+	FILE *fichier = fopen("/etc/mime.types","r");
+	char buffer[BUFF_SIZE];
+	int j=0;
+	while(fgets(buffer,BUFF_SIZE,fichier) != NULL){
+		char type[30];
+		char  str[50];
+		sscanf(buffer,"%s %s", type, str);
+		int i;
+		int taille=strlen(str);
+		for(i=0;i<taille;i++){
+			if(str[i]!=' ')
+				break;
+		}
+		char *extension=substr(str,i,strlen(str));
+		char ext2[15];
+		strcpy(ext2,extension);
+		type_ext te;
+		te.type=type;
+		te.ext=ext2;
+		mime[i]=te;
+		i++;
+	}
+	return 0;
+
+}
+
+char * get_ext_file(char * url){
+	char *ext=strrchr(url,'.');
+	if(ext == url)
+		return "";
+	return ext+1;
+}
 
 int get_file_size(int fd){
 	struct stat fileStat;
@@ -197,7 +232,7 @@ void traiterClient(int socket_client, char * root){
 	if(i==0){
 		send_response(f, 400 , "Bad Request" , "Bad request\r\n");
 		exit(0);			
-	}			
+	}		
 	else if(req.method == HTTP_UNSUPPORTED ){
 		send_response( f , 405 , "Method Not Allowed" , "Method Not Allowed\r\n" );
 		exit(0);		
@@ -205,10 +240,13 @@ void traiterClient(int socket_client, char * root){
 	else if(open== -1){
 		send_response(f, 404 , "Not Found" , "Not Found\r\n" );
 		exit(0);
-	}
+	} 
 	else{	
 		send_status(f,200,"OK");
-		fprintf(f, "Content-Length: %i\r\n\r\n",get_file_size(open));
+		fprintf(f, "Content-Length: %i\r\n",get_file_size(open));
+		char *ext=get_ext_file(req.url);
+		//fprintf(f,"Content-Type: %s\r\n\r\n",type);
+		fflush(f);
 		copy(open,fileno(f));
 		exit(0);
 	}
