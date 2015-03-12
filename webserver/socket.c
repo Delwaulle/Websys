@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "tools.h"
+#include <ctype.h>
+
 
 int creer_serveur(int port ){
 	int socket_serveur ;
@@ -70,7 +72,8 @@ int parse_http_request( const char * ligne , http_request * request){
 	else {
 		request->method=HTTP_UNSUPPORTED;
 	}
-	for(i=0;i<strlen(ligne);i++){
+	int k =strlen(ligne);
+	for(i=0;i<k;i++){
 		if(ligne[i]==' '){
 			nbMots++;
 			if(nbMots==3){
@@ -108,7 +111,8 @@ char * rewrite_url(char * url,FILE * f){
 	if(strcmp(url,"/")==0)
 		return "/index.html";
 
-	for(i=0;i<strlen(url);i++){
+	int k=strlen(url);
+	for(i=0;i<k;i++){
 		if(url[i]=='?')
 			break;
 	}
@@ -148,14 +152,47 @@ char * searchEndSpace(char *ptr){
 	return NULL;
 }
 
+type_ext mime[MAX_MIMES];
 #define BUFF_SIZE 256
 int get_type_mime(){
 	FILE *fichier = fopen("/etc/mime.types","r");
 	char buffer[BUFF_SIZE];
 	int j=0;
 	while(fgets(buffer,BUFF_SIZE,fichier) != NULL){
-		type_ext *p = &mime[j];
+
+		/* commentaires */		
 		char *ptr;
+		ptr=strchr(buffer,'#');
+		if(ptr)
+			*ptr='\0';
+		type_ext *p = &mime[j];
+		int i;
+		/* remplacement tab et autre par espace */
+		for (i = 0 ; buffer[i] ; ++i)
+			if (isspace(buffer[i]))
+				buffer[i] = ' ';
+
+		/* type mime */
+		char *type = strtok(buffer," ");
+		if(type==NULL)
+			continue;
+		printf("type: %s: %d %d\n",type, (int)strlen(type), j);
+		strcpy(p->type,type);
+		printf("%s\n",p->type);
+		type = strtok(NULL, " ");
+		while( type != NULL ) 
+  		{
+			printf("ext: %s: %d\n",type, (int)strlen(type));
+    			strcpy(p->ext,type);			
+			printf( "%s\n", p->ext );
+      			type = strtok(NULL, " ");
+  		}
+		
+		/*
+		char *ptr;
+		ptr=strchr(buffer,'#');
+		if(ptr)
+			*ptr='\0';
 		ptr = buffer;
 		ptr=searchSpace(ptr);
 		if(ptr==NULL)
@@ -163,44 +200,50 @@ int get_type_mime(){
 		//printf("%s\n",buffer);
 		//printf("%i\n",ptr-buffer);
 
-		/* ptr pointe sur le premier "espace" */
+		 //ptr pointe sur le premier "espace" 
 		strncpy(p->type, buffer, ptr - buffer);
 		p->type[ptr-buffer] = '\0';
 		strcpy(mime[j].type,p->type);
 		//printf("%s\n",mime[j].type);
 
 
-		ptr=searchEndSpace(ptr);		
+		ptr=searchEndSpace(ptr);	
 		if(ptr==NULL)
 			continue;
-		/* ptr pointe sur l'extension */
 
 
-		strncpy(p->ext, ptr, 15);
-		p->ext[15] = '\0';
+		// ptr pointe sur l'extension 
+
+
+		//strncpy(p->ext, ptr, 15);
+		//p->ext[15] = '\0';
 
 		int idxType=j;
-		ptr++;
 		char *ptr2=ptr;
 
 		while((ptr=searchSpace(ptr))!=NULL){
-			strncpy(p->ext,buffer,ptr-ptr2);
-			strcpy(mime[j].ext,p->ext);
-			printf("%i\n",ptr-ptr2);
+			strncpy(p->ext,ptr2,ptr-ptr2);
+			p->ext[ptr-ptr2]='\0';
 			printf("%s\n",p->ext);
 			if(j!=idxType)
-				strcpy(mime[j].type,mime[idxType].type);
+				strcpy(p->type,mime[idxType].type);
+			
 
-			//printf("%s\n",mime[j].type);
-			//printf("%s\n",mime[j].ext);
-			ptr++;
-			ptr2=ptr;
+			//printf("%s\n",p->type);
+			//printf("%s\n",p->ext);
+			ptr2=searchEndSpace(ptr);
+			if(!ptr2)
+				break;
 			j++;
-		}
+			p=&mime[j];
+		}*/
 		j++;
+		if (j == MAX_MIMES)
+			break;
 	}
-	mime[j].ext[0]='\0';
-	mime[j].type[0]='\0';
+
+	//mime[j].ext[0]='\0';
+	//mime[j].type[0]='\0';
 	return 0;
 
 }
@@ -223,11 +266,12 @@ char *fgets_or_exit( char * buffer , int size , FILE * stream ){
 	if(fgets(buffer,size,stream)==NULL){
 		exit(0);
 	}
+	return NULL;
 }
 
 void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long ){
 	send_status(client,code,message_cours);
-	fprintf(client, "Content-Length: %i\r\n\r\n%s",strlen(message_long),message_long);
+	fprintf(client, "Content-Length: %i\r\n\r\n%s",(int)strlen(message_long),message_long);
 	fflush(client);
 }
 
@@ -271,6 +315,7 @@ int copy(int in, int out){
 	while((nbEcrit=read(in,buffer,sizeof(buffer)))>0){
     		write(out,buffer,nbEcrit);
 	}
+	return 0;
 }
 
 #define BUFF_SIZE 256
@@ -318,7 +363,6 @@ void traiterClient(int socket_client, char * root){
 
 int attendre_socket(int socket_serveur, char * root){
 	pid_t pid;
-	int status;
 	while(1){
 		int socket_client ;
 		socket_client = accept(socket_serveur , NULL , NULL);

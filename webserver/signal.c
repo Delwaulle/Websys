@@ -1,10 +1,10 @@
 #include "signal.h"
 
-void traitement_signal(int sig )
+void traitement_signal(int sig)
 {
 	int status;
 	while(waitpid(-1, &status,WNOHANG)==0);
-	//printf("Signal %d reçu \n" ,sig);
+	sig++;
 }
 
 

@@ -3,9 +3,10 @@
 #ifndef TOOLS_H  
 #define TOOLS_H
 typedef struct{
-	char type[50] ;
-	char ext[15] ;
+	char type[500] ;
+	char ext[150] ;
 } type_ext;
 
-type_ext mime[500];
+#define MAX_MIMES 2000
+extern type_ext mime[MAX_MIMES];
 #endif

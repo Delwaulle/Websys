@@ -2,7 +2,7 @@
 # ainsi que les paramètres de compilation
 CC=gcc
 LD=gcc
-CFLAGS=-Wall -W -Werror
+CFLAGS=-Wall -W -Werror -g
 LDFLAGS=
 # Le nom de l’exécutable à fabriquer
 EXE=websys
@@ -15,7 +15,7 @@ CFILES=$(wildcard *.c)
 # Cette construction de variable veut dire: remplacer la chaine ".c" par
 # ".o" dans la variable CFILES
 # Ceci nous permet de construire la liste des fichiers .o à fabriquer
-OBJS=$(CFILES:.c =.o)
+OBJS=$(CFILES:.c=.o)
 # Même utilisation que précédemment. On précise les règles qui
 # ne fabrique pas de fichier du nom de leur cible
 .PHONY: all clean mrproper
