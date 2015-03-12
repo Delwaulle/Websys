@@ -127,8 +127,8 @@ char * rewrite_url(char * url,FILE * f){
 
 int compareExt(char * ext){
 	int i;
-	for(i=0;mime[i].ext!='\0' && mime[i].type!='\0';i++){
-		if(strcmp(ext,mime[i].ext)>0){
+	for(i=0;i<MAX_MIMES;i++){
+		if(strcmp(ext,mime[i].ext)==0){
 			return i;
 		}
 	}
@@ -176,15 +176,20 @@ int get_type_mime(){
 		char *type = strtok(buffer," ");
 		if(type==NULL)
 			continue;
-		printf("type: %s: %d %d\n",type, (int)strlen(type), j);
+		//printf("type: %s: %d %d\n",type, (int)strlen(type), j);
 		strcpy(p->type,type);
-		printf("%s\n",p->type);
+		//printf("%s\n",p->type);
 		type = strtok(NULL, " ");
+		int idxType=j;
 		while( type != NULL ) 
   		{
-			printf("ext: %s: %d\n",type, (int)strlen(type));
-    			strcpy(p->ext,type);			
-			printf( "%s\n", p->ext );
+			if(j!=idxType)
+				strcpy(p->type,mime[idxType].type);
+			//printf("ext: %s: %d\n",type, (int)strlen(type));
+    			strcpy(p->ext,type);		
+			//printf("tour : %i  -- %i --   %s\n",j,idxType, p->ext );
+			j++;
+			p=&mime[j];
       			type = strtok(NULL, " ");
   		}
 		
@@ -241,9 +246,6 @@ int get_type_mime(){
 		if (j == MAX_MIMES)
 			break;
 	}
-
-	//mime[j].ext[0]='\0';
-	//mime[j].type[0]='\0';
 	return 0;
 
 }
@@ -348,7 +350,7 @@ void traiterClient(int socket_client, char * root){
 		fprintf(f, "Content-Length: %i\r\n",get_file_size(open));
 		char *ext=get_ext_file(req.url);
 		int result=compareExt(ext);
-		if(result==0){
+		if(result>0){
 			fprintf(f,"Content-Type: %s\r\n\r\n",mime[result].type);
 		}
 		else {
