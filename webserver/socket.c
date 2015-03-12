@@ -179,16 +179,24 @@ int get_type_mime(){
 		strncpy(p->ext, ptr, 15);
 		p->ext[15] = '\0';
 
+		int idxType=j;
+		ptr++;
 		char *ptr2=ptr;
+
 		while((ptr=searchSpace(ptr))!=NULL){
 			strncpy(p->ext,buffer,ptr-ptr2);
 			strcpy(mime[j].ext,p->ext);
+			printf("%i\n",ptr-ptr2);
+			printf("%s\n",p->ext);
+			if(j!=idxType)
+				strcpy(mime[j].type,mime[idxType].type);
+
+			//printf("%s\n",mime[j].type);
+			//printf("%s\n",mime[j].ext);
+			ptr++;
+			ptr2=ptr;
 			j++;
 		}
-
-		strcpy(mime[j].ext,p->ext);
-		printf("%s\n",mime[j].ext);
-
 		j++;
 	}
 	mime[j].ext[0]='\0';
