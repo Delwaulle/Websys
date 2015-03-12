@@ -120,30 +120,79 @@ char * rewrite_url(char * url,FILE * f){
 	return substr(url,0,i);
 
 }
+
+int compareExt(char * ext){
+	int i;
+	for(i=0;mime[i].ext!='\0' && mime[i].type!='\0';i++){
+		if(strcmp(ext,mime[i].ext)>0){
+			return i;
+		}
+	}
+	return -1;
+}
+
+char * searchSpace(char * ptr){
+	while (*ptr && !isspace(*ptr))
+			ptr++;
+	if(*ptr)
+		return ptr;
+	return NULL;
+}
+
+char * searchEndSpace(char *ptr){
+	while (*ptr && isspace(*ptr))
+			ptr++;
+
+	if(*ptr)
+		return ptr;
+	return NULL;
+}
+
 #define BUFF_SIZE 256
 int get_type_mime(){
 	FILE *fichier = fopen("/etc/mime.types","r");
 	char buffer[BUFF_SIZE];
 	int j=0;
 	while(fgets(buffer,BUFF_SIZE,fichier) != NULL){
-		char type[30];
-		char  str[50];
-		sscanf(buffer,"%s %s", type, str);
-		int i;
-		int taille=strlen(str);
-		for(i=0;i<taille;i++){
-			if(str[i]!=' ')
-				break;
+		type_ext *p = &mime[j];
+		char *ptr;
+		ptr = buffer;
+		ptr=searchSpace(ptr);
+		if(ptr==NULL)
+			continue;
+		//printf("%s\n",buffer);
+		//printf("%i\n",ptr-buffer);
+
+		/* ptr pointe sur le premier "espace" */
+		strncpy(p->type, buffer, ptr - buffer);
+		p->type[ptr-buffer] = '\0';
+		strcpy(mime[j].type,p->type);
+		//printf("%s\n",mime[j].type);
+
+
+		ptr=searchEndSpace(ptr);		
+		if(ptr==NULL)
+			continue;
+		/* ptr pointe sur l'extension */
+
+
+		strncpy(p->ext, ptr, 15);
+		p->ext[15] = '\0';
+
+		char *ptr2=ptr;
+		while((ptr=searchSpace(ptr))!=NULL){
+			strncpy(p->ext,buffer,ptr-ptr2);
+			strcpy(mime[j].ext,p->ext);
+			j++;
 		}
-		char *extension=substr(str,i,strlen(str));
-		char ext2[15];
-		strcpy(ext2,extension);
-		type_ext te;
-		te.type=type;
-		te.ext=ext2;
-		mime[i]=te;
-		i++;
+
+		strcpy(mime[j].ext,p->ext);
+		printf("%s\n",mime[j].ext);
+
+		j++;
 	}
+	mime[j].ext[0]='\0';
+	mime[j].type[0]='\0';
 	return 0;
 
 }
@@ -245,7 +294,13 @@ void traiterClient(int socket_client, char * root){
 		send_status(f,200,"OK");
 		fprintf(f, "Content-Length: %i\r\n",get_file_size(open));
 		char *ext=get_ext_file(req.url);
-		//fprintf(f,"Content-Type: %s\r\n\r\n",type);
+		int result=compareExt(ext);
+		if(result==0){
+			fprintf(f,"Content-Type: %s\r\n\r\n",mime[result].type);
+		}
+		else {
+			fprintf(f,"Content-Type: %s\r\n\r\n","text/plain");
+		}
 		fflush(f);
 		copy(open,fileno(f));
 		exit(0);
