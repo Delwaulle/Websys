@@ -19,6 +19,7 @@ int attendre_socket(int socket_serveur,char * root);
 void send_status( FILE * client , int code , const char * reason_phrase );
 void send_response ( FILE * client , int code ,const char * message_cours ,const char * message_long );
 int get_type_mime();
+void send_stats( FILE * client );
 enum http_method {
 	HTTP_GET,
 	HTTP_UNSUPPORTED,

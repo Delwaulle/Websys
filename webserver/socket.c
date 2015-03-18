@@ -108,9 +108,9 @@ int parse_http_request( const char * ligne , http_request * request){
 
 char * rewrite_url(char * url,FILE * f){
 	int i;
-	if(strcmp(url,"/")==0)
+	if(strcmp(url,"/")==0){
 		return "/index.html";
-
+	}
 	int k=strlen(url);
 	for(i=0;i<k;i++){
 		if(url[i]=='?')
@@ -192,56 +192,6 @@ int get_type_mime(){
 			p=&mime[j];
       			type = strtok(NULL, " ");
   		}
-		
-		/*
-		char *ptr;
-		ptr=strchr(buffer,'#');
-		if(ptr)
-			*ptr='\0';
-		ptr = buffer;
-		ptr=searchSpace(ptr);
-		if(ptr==NULL)
-			continue;
-		//printf("%s\n",buffer);
-		//printf("%i\n",ptr-buffer);
-
-		 //ptr pointe sur le premier "espace" 
-		strncpy(p->type, buffer, ptr - buffer);
-		p->type[ptr-buffer] = '\0';
-		strcpy(mime[j].type,p->type);
-		//printf("%s\n",mime[j].type);
-
-
-		ptr=searchEndSpace(ptr);	
-		if(ptr==NULL)
-			continue;
-
-
-		// ptr pointe sur l'extension 
-
-
-		//strncpy(p->ext, ptr, 15);
-		//p->ext[15] = '\0';
-
-		int idxType=j;
-		char *ptr2=ptr;
-
-		while((ptr=searchSpace(ptr))!=NULL){
-			strncpy(p->ext,ptr2,ptr-ptr2);
-			p->ext[ptr-ptr2]='\0';
-			printf("%s\n",p->ext);
-			if(j!=idxType)
-				strcpy(p->type,mime[idxType].type);
-			
-
-			//printf("%s\n",p->type);
-			//printf("%s\n",p->ext);
-			ptr2=searchEndSpace(ptr);
-			if(!ptr2)
-				break;
-			j++;
-			p=&mime[j];
-		}*/
 		j++;
 		if (j == MAX_MIMES)
 			break;
@@ -252,7 +202,7 @@ int get_type_mime(){
 
 char * get_ext_file(char * url){
 	char *ext=strrchr(url,'.');
-	if(ext == url)
+	if(ext == NULL)
 		return "";
 	return ext+1;
 }
@@ -295,18 +245,20 @@ void skip_headers(FILE *client){
 
 int check_and_open(const char * url , char * document_root ){
 	
-	char *str=strcat(document_root,url);
+	char *str=malloc(strlen(url)+strlen(document_root)+1);
+	strcpy(str,document_root);
+	strcat(str, url);
+	printf("%s\n",str);
 	struct stat fi;
         stat(str, &fi);
         if(S_ISREG(fi.st_mode)==0){
 		return -1;
 	}
-	int fichier = open(str,O_RDONLY,0666);
+	int fichier = open(str,O_RDONLY);
 	if(fichier==-1){
 		perror("open fichier");
 		return -1;
 	}
-
 	return fichier;
 
 }
@@ -318,6 +270,13 @@ int copy(int in, int out){
     		write(out,buffer,nbEcrit);
 	}
 	return 0;
+}
+
+void send_stats ( FILE * client ){
+	send_status(client,200,"OK");
+	fprintf(client, "Content-Length: %i\r\n\r\n",5);
+	fprintf(client,"Content-Type: %s\r\n\r\n","text/plain");
+	//fprintf(client,"stats\n");
 }
 
 #define BUFF_SIZE 256
@@ -332,7 +291,16 @@ void traiterClient(int socket_client, char * root){
 	fgets_or_exit(p,BUFF_SIZE,f);
 	i=parse_http_request(p,r);
 	skip_headers(f);
-	open=check_and_open(rewrite_url(req.url,f), root );
+	char *rew_url=rewrite_url(req.url,f);
+	printf("%s\n%s\n",rew_url,root);
+
+	open=check_and_open(rew_url, root );
+	printf("OPEN %d\n", open);
+
+	if(strcmp(rew_url,"/stats")==0){
+		printf("===stats===");
+		send_stats(f);
+	}
 	if(i==0){
 		send_response(f, 400 , "Bad Request" , "Bad request\r\n");
 		exit(0);			
@@ -348,7 +316,7 @@ void traiterClient(int socket_client, char * root){
 	else{	
 		send_status(f,200,"OK");
 		fprintf(f, "Content-Length: %i\r\n",get_file_size(open));
-		char *ext=get_ext_file(req.url);
+		char *ext=get_ext_file(rew_url);
 		int result=compareExt(ext);
 		if(result>0){
 			fprintf(f,"Content-Type: %s\r\n\r\n",mime[result].type);
