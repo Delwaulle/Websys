@@ -248,7 +248,6 @@ int check_and_open(const char * url , char * document_root ){
 	char *str=malloc(strlen(url)+strlen(document_root)+1);
 	strcpy(str,document_root);
 	strcat(str, url);
-	printf("%s\n",str);
 	struct stat fi;
         stat(str, &fi);
         if(S_ISREG(fi.st_mode)==0){
@@ -274,9 +273,11 @@ int copy(int in, int out){
 
 void send_stats ( FILE * client ){
 	send_status(client,200,"OK");
-	fprintf(client, "Content-Length: %i\r\n\r\n",5);
+	fprintf(client, "Content-Length: %i\r\n",8);
 	fprintf(client,"Content-Type: %s\r\n\r\n","text/plain");
-	//fprintf(client,"stats\n");
+	fflush(client);
+	fprintf(client,"STATUS\r\n");
+	fflush(client);
 }
 
 #define BUFF_SIZE 256
@@ -292,16 +293,14 @@ void traiterClient(int socket_client, char * root){
 	i=parse_http_request(p,r);
 	skip_headers(f);
 	char *rew_url=rewrite_url(req.url,f);
-	printf("%s\n%s\n",rew_url,root);
 
 	open=check_and_open(rew_url, root );
-	printf("OPEN %d\n", open);
 
 	if(strcmp(rew_url,"/stats")==0){
-		printf("===stats===");
 		send_stats(f);
+		exit(0);
 	}
-	if(i==0){
+	else if(i==0){
 		send_response(f, 400 , "Bad Request" , "Bad request\r\n");
 		exit(0);			
 	}		
